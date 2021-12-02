@@ -54,8 +54,9 @@ class DataMemory : public QObject
 		
 		bool getLoad() { return m_loaded; };
 		cv::Mat gt(int id);
-		
 		cv::Mat clean(int i) { return m_clean[i]; }
+
+		
 
 		cv::Mat gtTrain(int i) { return m_gtTrain[i]; }
 		cv::Mat cleanTrain(int i) { return m_cleanTrain[i]; }
@@ -104,7 +105,10 @@ class DataMemory : public QObject
 		std::vector<QString> m_filenames;
 		std::vector<QString> m_paths;
 		std::vector<QString> m_gtPaths;
+		std::vector<QString> m_roiPaths;
+		std::vector<QString> m_roiNames;
 		std::vector<int> m_gtElements;
+		std::vector<int> m_roiElements;
 		std::vector<cv::Mat> m_clean;
 		std::vector<cv::Mat> m_gt;
 		std::vector<cv::Mat> m_cleanTrain;
@@ -116,6 +120,7 @@ class DataMemory : public QObject
 		QString m_folderInputPath{};
 		QString m_configPath{};
 		QString m_cleanPath{};
+		QString m_roiPath{};
 		QString m_gtPath{};
 		QString m_cleanTrainPath{};
 		QString m_gtTrainPath{};

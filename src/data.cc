@@ -17,6 +17,7 @@ constexpr auto VIDEO_NAME{ "VideoName" };
 
 constexpr auto DIR_CLEAN{ "DirectoryClean" };
 constexpr auto DIR_GT{ "DirectoryGt" };
+constexpr auto DIR_ROI{ "DirectoryROI" };
 constexpr auto DIR_CLEAN_TRAIN{ "DirectoryCleanTrain" };
 constexpr auto DIR_CLEANT_TEST{ "DirectoryCleanTest" };
 constexpr auto DIR_GT_TRAIN{ "DirectoryGtTrain" };
@@ -148,6 +149,8 @@ void DataMemory::loadConfig(QJsonObject const& a_config)
 	m_cleanPath = m_datasetConfig[DIR_CLEAN].toString();
 	m_gtPath = m_datasetConfig[DIR_GT].toString();
 
+	m_roiPath = m_datasetConfig[DIR_ROI].toString();
+	
 	m_inputType = m_datasetConfig[INPUT_TYPE].toString();
 	m_outputType = m_datasetConfig[OUTPUT_TYPE].toString();
 
@@ -168,6 +171,7 @@ void DataMemory::loadConfig(QJsonObject const& a_config)
 
 	checkAndCreateFolder(m_configPath + m_cleanPath);
 	checkAndCreateFolder(m_configPath + m_gtPath);
+	checkAndCreateFolder(m_configPath + m_roiPath);
 	checkAndCreateFolder(m_configPath + m_cleanTrainPath);
 	checkAndCreateFolder(m_configPath + m_gtTrainPath);
 	checkAndCreateFolder(m_configPath + m_cleanTestPath);
@@ -340,7 +344,7 @@ bool DataMemory::loadCleanData(QString path, std::vector<cv::Mat> &data, int fra
 			data.push_back(inputMat);
 			m_paths.push_back(path);
 			m_names.push_back(m_imgList[iteration] );
-			m_filenames.push_back(m_imgList[iteration] + m_inputType);	
+			m_filenames.push_back(m_imgList[iteration] + m_inputType);
 		}
 	}
 	else
@@ -392,6 +396,9 @@ bool DataMemory::loadPath(QString path, std::vector<cv::Mat> &data, int framesNu
 			m_gtElements.push_back(elements);
 			m_gtPaths.push_back(path);
 			data.push_back(inputMat);
+			m_roiPaths.push_back(m_configPath + m_roiPath);
+			m_roiElements.push_back(0);
+			m_roiNames.push_back(m_imgList[iteration]+".json");
 		}
 	}
 	else
@@ -484,6 +491,9 @@ bool DataMemory::saveEmptyGt()
 			m_gtPaths.push_back(m_configPath + m_gtPath);
 			m_gt.push_back(inputMat);
 			m_gtElements.push_back(0);
+			m_roiPaths.push_back(m_configPath + m_roiPath);
+			m_roiElements.push_back(0);
+			m_roiNames.push_back(m_imgList[iteration]+".json");
 		}
 	}
 	else
