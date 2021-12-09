@@ -4,7 +4,7 @@
 #include "includespdlog.h"
 #include "configreader.h"
 
-#define DEBUG
+//#define DEBUG
 
 constexpr auto NAME{ "Name" };
 constexpr auto TYPE{ "Type" };
@@ -66,27 +66,19 @@ void DataMemory::createSplit()
 }
 
 cv::Mat DataMemory::gt(int id) 
-{ 
+{
+	#ifdef DEBUG
 	Logger->debug("DataMemory::gt(id:{})", id);
-	int elements{0};
-	for (int i = 0; i < m_gt[id].cols; i++)
-	{
-		for (int j = 0; j < m_gt[id].rows; j++)
-		{
-			if ((m_gt[id].at<unsigned char>(j, i) > 0 ) && (m_gt[id].at<unsigned char>(j, i) <=255))
-			{
-				elements++;
-			}
-		}
-	}
-	m_gtElements[id] = elements;
-	Logger->debug("DataMemory::m_gtElements[i:{}]={}", id, elements);
+	#endif
+	countGtElements(id);
 	return m_gt[id]; 
 }
 
 void DataMemory::countGtElements(int id)
 {
-	Logger->debug("DataMemory::gt(id:{})", id);
+	#ifdef DEBUG
+	Logger->debug("DataMemory::countGtElements(id:{})", id);
+	#endif
 	int elements{0};
 	for (int i = 0; i < m_gt[id].cols; i++)
 	{
@@ -98,6 +90,9 @@ void DataMemory::countGtElements(int id)
 			}
 		}
 	}
+	#ifdef DEBUG
+	Logger->debug("DataMemory::countGtElements() m_gtElements[i:{}]={}", id, elements);
+	#endif
 	m_gtElements[id] = elements;
 }
 
@@ -139,6 +134,10 @@ void DataMemory::loadConfig(QJsonObject const& a_config)
 	
 	QString configName = jDataset[CONFIG_NAME].toString();
 	m_configPath = jDataset[PATH_TO_DATASET].toString();
+	if(!m_configPath.endsWith('/'))
+	{
+		m_configPath+="/";
+	}
 
 	auto cR = std::make_unique<ConfigReader>();
 	if (!cR->readConfig(m_configPath + configName, m_datasetConfig))
@@ -212,9 +211,11 @@ bool DataMemory::loadNamesOfFile()
 			QString gt = m_configPath + m_gtTrainPath + m_split + m_imgList[iteration] + m_inputType;
 			if (iteration % 100 == 0)
 			{
+				#ifdef DEBUG
 				Logger->debug("DataMemory::loadNamesOfFile() file loading:{}/{}...", iteration, m_imgList.size());
 				Logger->debug("DataMemory::loadNamesOfFile() name:{}", name.toStdString());
 				Logger->debug("DataMemory::loadNamesOfFile() gt:{}", gt.toStdString());
+				#endif
 			}
 			if (iteration >= m_startTrain && iteration < m_stopTrain)
 			{
@@ -327,14 +328,18 @@ bool DataMemory::loadCleanData(QString path, std::vector<cv::Mat> &data, int fra
 		{
 			if (iteration % 100 == 0)
 			{
+				#ifdef DEBUG
 				Logger->debug("loadCleanData() loaded frames:{}", iteration);
+				#endif
 			}
 			const QString name = path +  m_split + m_imgList[iteration] + m_inputType;
 			const cv::Mat inputMat = cv::imread((name).toStdString(), cv::IMREAD_GRAYSCALE);
 			
 			if(iteration > framesNumber)
 			{
+				#ifdef DEBUG
 				Logger->debug("DataMemory::loadCleanData() stop loading on:{} frame", iteration);
+				#endif
 				break;
 			}
 			if (inputMat.empty())
@@ -368,14 +373,18 @@ bool DataMemory::loadPath(QString path, std::vector<cv::Mat> &data, int framesNu
 		{
 			if (iteration % 100 == 0)
 			{
+				#ifdef DEBUG
 				Logger->debug("loadPath() loaded frames:{}", iteration);
+				#endif
 			}
 			const QString name = path +  m_split + m_imgList[iteration] + m_inputType;
 			const cv::Mat inputMat = cv::imread((name).toStdString(), cv::IMREAD_GRAYSCALE);
 			
 			if(iteration > framesNumber)
 			{
+				#ifdef DEBUG
 				Logger->debug("DataMemory::loadPath() stop loading on:{} frame", iteration);
+				#endif
 				break;
 			}
 			if (inputMat.empty())
@@ -394,9 +403,9 @@ bool DataMemory::loadPath(QString path, std::vector<cv::Mat> &data, int framesNu
 				}
 			}
 			m_gtElements.push_back(elements);
-			m_gtPaths.push_back(path);
+			m_gtPaths.push_back(m_configPath + m_gtPath + m_split);
 			data.push_back(inputMat);
-			m_roiPaths.push_back(m_configPath + m_roiPath);
+			m_roiPaths.push_back(m_configPath + m_roiPath + m_split);
 			m_roiElements.push_back(0);
 			m_roiNames.push_back(m_imgList[iteration]+".json");
 		}
@@ -425,7 +434,7 @@ bool DataMemory::loadDataFromPath(std::vector<cv::Mat> &data, std::vector<cv::Ma
 	}
 	if (!loadPath(m_gt, gt, m_allFrames))
 	{
-		Logger->info("DataMemory::loadDataFromPath() {} not loaded", m_gt.toStdString());
+		Logger->info("DataMemory::loadDataFromPath() {} not loaded, try to save clean gt", m_gt.toStdString());
 		saveEmptyGt();
 	}
 
@@ -467,7 +476,9 @@ bool DataMemory::saveEmptyGt()
 		{
 			if (iteration % 100 == 0)
 			{
-				Logger->debug("DataMemory::saveEmptyGt() loaded frames:{}", iteration);
+				#ifdef DEBUG
+					Logger->debug("DataMemory::saveEmptyGt() loaded frames:{}", iteration);
+				#endif
 			}
 			QString name = m_configPath + m_gtPath +  m_split + m_imgList[iteration] + m_inputType;
 			
@@ -481,7 +492,9 @@ bool DataMemory::saveEmptyGt()
 
 			if(iteration > m_allFrames)
 			{
+				#ifdef DEBUG
 				Logger->debug("DataMemory::saveEmptyGt() stop loading on:{} frame", iteration);
+				#endif
 				break;
 			}
 			if (inputMat.empty())
@@ -491,7 +504,7 @@ bool DataMemory::saveEmptyGt()
 			m_gtPaths.push_back(m_configPath + m_gtPath);
 			m_gt.push_back(inputMat);
 			m_gtElements.push_back(0);
-			m_roiPaths.push_back(m_configPath + m_roiPath);
+			m_roiPaths.push_back(m_configPath + m_roiPath + m_split);
 			m_roiElements.push_back(0);
 			m_roiNames.push_back(m_imgList[iteration]+".json");
 		}
