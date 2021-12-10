@@ -4,7 +4,7 @@
 #include "includespdlog.h"
 #include "configreader.h"
 
-//#define DEBUG
+#define DEBUG
 
 constexpr auto NAME{ "Name" };
 constexpr auto TYPE{ "Type" };
@@ -17,7 +17,7 @@ constexpr auto VIDEO_NAME{ "VideoName" };
 
 constexpr auto DIR_CLEAN{ "DirectoryClean" };
 constexpr auto DIR_GT{ "DirectoryGt" };
-constexpr auto DIR_ROI{ "DirectoryROI" };
+constexpr auto DIR_ROI{ "DirectoryRoi" };
 constexpr auto DIR_CLEAN_TRAIN{ "DirectoryCleanTrain" };
 constexpr auto DIR_CLEANT_TEST{ "DirectoryCleanTest" };
 constexpr auto DIR_GT_TRAIN{ "DirectoryGtTrain" };
@@ -192,6 +192,9 @@ void DataMemory::loadConfig(QJsonObject const& a_config)
 
 bool DataMemory::loadNamesOfFile()
 {
+	#ifdef DEBUG
+	Logger->debug("DataMemory::loadNamesOfFile()");
+	#endif
 	m_imageInfoTest.clear();
 	m_imageInfoTrain.clear();
 	
@@ -233,6 +236,46 @@ bool DataMemory::loadNamesOfFile()
 	else
 	{
 		Logger->warn("DataMemory::loadNamesOfFile() file non loaded{}");
+		return false;
+	}
+	return true;
+}
+
+bool DataMemory::loadNamesForPreTraining()
+{
+	#ifdef DEBUG
+	Logger->debug("DataMemory::loadNamesForPreTraining()");
+	#endif
+	m_imageInfoRoiTrain.clear();
+	
+	QString pathForJson = m_configPath + m_roiPath + m_split;
+	QVector<QString> m_jsonList = scanAllJsonNames(pathForJson);
+	std::sort(m_jsonList.begin(), m_jsonList.end());
+	#ifdef DEBUG
+	Logger->debug("m_jsonList:{}", m_jsonList.size());
+	Logger->debug("pathForJson:{}", pathForJson.toStdString());
+	#endif
+	if (m_jsonList.size() > 0)
+	{
+
+		for (qint32 iteration = 0; iteration < m_jsonList.size(); iteration++)
+		{
+			QString name = m_configPath + m_cleanPath + m_split + m_jsonList[iteration] + m_inputType;
+			QString gt = m_configPath + m_gtPath + m_split + m_jsonList[iteration] + m_inputType;
+			if (iteration % 100 == 0)
+			{
+				#ifdef DEBUG
+				Logger->debug("DataMemory::loadNamesForPreTraining() file loading:{}/{}...", iteration, m_jsonList.size());
+				Logger->debug("DataMemory::loadNamesForPreTraining() name:{}", name.toStdString());
+				Logger->debug("DataMemory::loadNamesForPreTraining() gt:{}", gt.toStdString());
+				#endif
+			}
+			m_imageInfoRoiTrain.push_back({ name.toStdString(), gt.toStdString() });
+		}
+	}
+	else
+	{
+		Logger->warn("DataMemory::loadNamesForPreTraining() file no loaded{}");
 		return false;
 	}
 	return true;

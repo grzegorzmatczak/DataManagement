@@ -37,11 +37,15 @@ class DataMemory : public QObject
 		~DataMemory();
 		bool configure(QJsonObject const& a_config);
 		bool loadNamesOfFile();
+		bool loadNamesForPreTraining();
 		void countGtElements(int id);
 
 	public: // get/set
 		std::vector<struct image_info> get_imageInfoTrain() { return m_imageInfoTrain; }
 		std::vector<struct image_info> get_imageInfoTest() { return m_imageInfoTest; }
+
+		std::vector<struct image_info> get_imageInfoRoiTrain() { return m_imageInfoRoiTrain; }
+		std::vector<struct image_info> get_imageInfoRoiTest() { return m_imageInfoRoiTest; }
 
 		size_t getSizeClean() { return m_clean.size(); }
 		size_t getSizeGt() { return m_gt.size(); }
@@ -133,6 +137,9 @@ class DataMemory : public QObject
 		QJsonObject m_datasetConfig{};
 
 	private:
+		std::vector<struct image_info>  m_imageInfoRoiTrain;
+		std::vector<struct image_info>  m_imageInfoRoiTest;
+
 		std::vector<struct image_info>  m_imageInfoTrain;
 		std::vector<struct image_info>  m_imageInfoTest;
 		
