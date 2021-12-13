@@ -38,6 +38,7 @@ class DataMemory : public QObject
 		bool configure(QJsonObject const& a_config);
 		bool loadNamesOfFile();
 		bool loadNamesForPreTraining();
+		bool createPreTraining();
 		void countGtElements(int id);
 
 	public: // get/set
@@ -57,10 +58,9 @@ class DataMemory : public QObject
 		size_t getSizeGtTest() { return m_gtTest.size(); }
 		
 		bool getLoad() { return m_loaded; };
+
 		cv::Mat gt(int id);
 		cv::Mat clean(int i) { return m_clean[i]; }
-
-		
 
 		cv::Mat gtTrain(int i) { return m_gtTrain[i]; }
 		cv::Mat cleanTrain(int i) { return m_cleanTrain[i]; }
@@ -94,15 +94,12 @@ class DataMemory : public QObject
 		bool loadDataFromStream(std::vector<cv::Mat> &data, std::vector<cv::Mat> &gt);
 		bool loadDataFromPath(std::vector<cv::Mat> &data, std::vector<cv::Mat> &gt);
 
-
 		bool loadPath(QString path, std::vector<cv::Mat> &data, int framesNumber);
 		bool loadCleanData(QString path, std::vector<cv::Mat> &data, int framesNumber);
 		bool loadDataWindows(std::vector<cv::Mat> &data, std::vector<cv::Mat> &gt);
 
-
 	signals:
 		void memoryLoaded();
-
 
 	public:
 		std::vector<QString> m_names;

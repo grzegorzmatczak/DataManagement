@@ -9,9 +9,11 @@
 constexpr auto NAME{ "Name" };
 constexpr auto TYPE{ "Type" };
 constexpr auto CONFIG{ "Config" };
-
+constexpr auto ROI{ "ROI" };
 constexpr auto WIDTH{ "Width" };
 constexpr auto HEIGHT{ "Height" };
+constexpr auto X{ "X" };
+constexpr auto Y{ "Y" };
 constexpr auto FROM_VIDEO{ "FromVideo" };
 constexpr auto VIDEO_NAME{ "VideoName" };
 
@@ -39,7 +41,6 @@ constexpr auto DATASET_UNIX{ "DatasetLinux" };
 constexpr auto DATASET_WIN32{ "DatasetWin32" };
 constexpr auto SAVE_PREPROCESSING_DATASET{ "SavePreprocessingDataset" };
 constexpr auto ALL_FRAMES{ "AllFrames" };
-
 
 
 DataMemory::DataMemory()
@@ -186,7 +187,6 @@ void DataMemory::loadConfig(QJsonObject const& a_config)
 	Logger->debug("DataMemory::loadConfig() m_allFrames:{}", m_allFrames);
 	Logger->debug("DataMemory::loadConfig() m_fromVideo:{}", m_fromVideo);
 	Logger->debug("DataMemory::loadConfig() done");
-	
 	#endif
 }
 
@@ -241,13 +241,12 @@ bool DataMemory::loadNamesOfFile()
 	return true;
 }
 
-bool DataMemory::loadNamesForPreTraining()
+bool DataMemory::createPreTraining()
 {
 	#ifdef DEBUG
-	Logger->debug("DataMemory::loadNamesForPreTraining()");
+	Logger->debug("DataMemory::createPreTraining()");
 	#endif
-	m_imageInfoRoiTrain.clear();
-	
+	auto cR = std::make_unique<ConfigReader>();
 	QString pathForJson = m_configPath + m_roiPath + m_split;
 	QVector<QString> m_jsonList = scanAllJsonNames(pathForJson);
 	std::sort(m_jsonList.begin(), m_jsonList.end());
@@ -260,8 +259,87 @@ bool DataMemory::loadNamesForPreTraining()
 
 		for (qint32 iteration = 0; iteration < m_jsonList.size(); iteration++)
 		{
-			QString name = m_configPath + m_cleanPath + m_split + m_jsonList[iteration] + m_inputType;
-			QString gt = m_configPath + m_gtPath + m_split + m_jsonList[iteration] + m_inputType;
+			QJsonObject jsonConfig;
+			QString pathToJsonFile = pathForJson + m_jsonList[iteration] + ".json";
+			if (!cR->readConfig(pathToJsonFile, jsonConfig))
+			{
+				Logger->error("DataMemory::configure() File {} not readed", (pathToJsonFile).toStdString());
+			}
+			auto jsonConfigArray = jsonConfig[ROI].toArray();
+			int counter{0};
+			for(auto& arr : jsonConfigArray)
+			{
+				QJsonObject arrObj = arr.toObject();
+				int x = arrObj[X].toInt()-100;
+				int y = arrObj[Y].toInt()-100;
+				int width = arrObj[WIDTH].toInt();
+				int height = arrObj[HEIGHT].toInt();
+
+				if( width==0 || height==0)
+					break;
+				width+=200;
+				height+=200;
+				if(x<0){x=0;}
+				if(y<0){y=0;}
+				
+				QString name = m_configPath + m_cleanPath + m_split + m_jsonList[iteration] + m_inputType;
+				QString gt = m_configPath + m_gtPath + m_split + m_jsonList[iteration] + m_inputType;
+				
+				const cv::Mat inputMat = cv::imread((name).toStdString(), cv::IMREAD_GRAYSCALE);
+				const cv::Mat gtMat = cv::imread((gt).toStdString(), cv::IMREAD_GRAYSCALE);
+				
+				if(x+width>=inputMat.cols){x=inputMat.cols - width;}
+				if(y+height>=inputMat.rows){y=inputMat.rows - width;}
+				qDebug() << "rect x:" << x << " y:" << y << " w:" << width << " h:" << height;
+				cv::Rect roi(x, y, width, height);
+
+				QString nameRoi = m_configPath + m_cleanTrainPath + m_split + m_jsonList[iteration] + "_"+ QString::number(counter) + m_inputType;
+				QString gtRoi = m_configPath + m_gtTrainPath + m_split + m_jsonList[iteration] + "_"+ QString::number(counter) + m_inputType;
+				try
+				{
+					const cv::Mat inputRoiMat = inputMat(roi);
+					const cv::Mat gtRoiMat = gtMat(roi);
+					cv::imwrite(nameRoi.toStdString(), inputRoiMat);
+					cv::imwrite(gtRoi.toStdString(), gtRoiMat);
+				}
+				catch (cv::Exception& e)
+				{
+					const char* err_msg = e.what();
+					qDebug() << "exception caught: " << err_msg;
+					return false;
+				}
+			}
+		}
+	}
+	else
+	{
+		Logger->warn("DataMemory::createPreTraining() file no loaded{}");
+		return false;
+	}
+	return true;
+}
+
+bool DataMemory::loadNamesForPreTraining()
+{
+	#ifdef DEBUG
+	Logger->debug("DataMemory::loadNamesForPreTraining()");
+	#endif
+	m_imageInfoRoiTrain.clear();
+	
+	auto cR = std::make_unique<ConfigReader>();
+	QString pathForJson = m_configPath + m_cleanTrainPath + m_split;
+	QVector<QString> m_jsonList = scanAllImagesNames(pathForJson);
+	std::sort(m_jsonList.begin(), m_jsonList.end());
+	#ifdef DEBUG
+	Logger->debug("m_jsonList:{}", m_jsonList.size());
+	Logger->debug("pathForJson:{}", pathForJson.toStdString());
+	#endif
+	if (m_jsonList.size() > 0)
+	{
+		for (qint32 iteration = 0; iteration < m_jsonList.size(); iteration++)
+		{
+			QString name = m_configPath + m_cleanTrainPath + m_split + m_jsonList[iteration] + m_inputType;
+			QString gt = m_configPath + m_gtTrainPath + m_split + m_jsonList[iteration] + m_inputType;
 			if (iteration % 100 == 0)
 			{
 				#ifdef DEBUG
@@ -323,7 +401,6 @@ bool DataMemory::loadStream(cv::VideoCapture videoFromFile, std::vector<cv::Mat>
 		{
 			cv::cvtColor(inputMat, inputMat, 6);
 		}
-
 		iter++;
 		if (iter > framesNumber)
 		{
@@ -497,7 +574,6 @@ bool DataMemory::saveCleanData(std::vector<cv::Mat> &data)
 		{
 			const QString number = QString("%1").arg(i, m_zeroPadding, 10, QChar('0')); 
 			const QString pathToSaveClean = m_configPath + m_cleanPath +  m_split + number + m_outputType;
-			//Logger->trace("DataMemory::preprocess() pathToSaveClean:{}", pathToSaveClean.toStdString());
 			cv::imwrite(pathToSaveClean.toStdString(), data[i]);
 		}
 	}
@@ -527,11 +603,7 @@ bool DataMemory::saveEmptyGt()
 			
 			// TODO add colors later:
 			cv::Mat inputMat = cv::Mat(m_height, m_width, CV_8UC1, cv::Scalar(0));
-			#ifdef DEBUG
-				//Logger->debug("DataMemory::saveEmptyGt() name:{}", name.toStdString().c_str());
-			#endif
 			cv::imwrite(name.toStdString(), inputMat);
-
 
 			if(iteration > m_allFrames)
 			{
@@ -556,4 +628,5 @@ bool DataMemory::saveEmptyGt()
 	{
 		return false;
 	}
+	return true;
 }
